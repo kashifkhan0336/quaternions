@@ -4,238 +4,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <unordered_map>
-#include "build/_deps/catch2-src/src/catch2/matchers/catch_matchers_floating_point.hpp"
-#include "build/_deps/catch2-src/extras/catch_amalgamated.hpp"
-struct Quaternion {
-	float w, x, y, z;
-	std::unordered_map<std::string, float> quat;
-	using iterator = std::unordered_map<std::string, float>::iterator;
-	using const_iterator = std::unordered_map<std::string, float>::const_iterator;
-	friend bool operator==(const Quaternion& lhs, const Quaternion& rhs);
-	iterator begin() {
-		return quat.begin();
-	}
-	iterator end() {
-		return quat.end();
-	}
-	const_iterator begin() const {
-		return quat.cbegin();
-	}
-	const_iterator end() const {
-		return quat.cend();
-	}
-	Quaternion(float w, float x, float y, float z) : w(w), x(x), y(y), z(z) {
-		quat["w"] = w;
-		quat["i"] = x;
-		quat["j"] = y;
-		quat["k"] = z;
-	}
-	Quaternion(float w, float x, float y, float z, bool normalize) : w(w), x(x), y(y), z(z) {
-		if (normalize) {
-			Quaternion normalizedQuat = normalizeUnit(Quaternion{ w,x,y,z });
-			w = normalizedQuat.w;
-			x = normalizedQuat.x;
-			y = normalizedQuat.y;
-			z = normalizedQuat.z;
-			quat["w"] = normalizedQuat.w;
-			quat["i"] = normalizedQuat.x;
-			quat["j"] = normalizedQuat.y;
-			quat["k"] = normalizedQuat.z;
-		}
-	}
-	Quaternion normalizeUnit(Quaternion quat) {
-		float sqr = sqrt(quat.w * quat.w + quat.x * quat.x + quat.y * quat.y + quat.z * quat.z);
-		return Quaternion{ quat.w / sqr, quat.x / sqr, quat.y / sqr, quat.z / sqr };
-	}
-};
-
-constexpr float LOOSE_EPS = 1e-5;
-constexpr float TIGHT_EPS = 1e-5;
-static bool epsilonComp(float a, float b, float epsilon = TIGHT_EPS) {
-	return std::fabs(a - b) <= epsilon;
-}
-bool operator==(const Quaternion& lhs, const Quaternion& rhs)
-{
-	if (epsilonComp(lhs.w, rhs.w) && epsilonComp(lhs.x, rhs.x), epsilonComp(lhs.y, rhs.y) && epsilonComp(lhs.z, rhs.z)) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-std::string q_mult(std::string u_key, std::string p_key) {
-	if ((u_key + p_key) == "ii") {
-		return "-1";
-	}
-
-	if ((u_key + p_key) == "ij") {
-		return "k";
-	}
-
-	if ((u_key + p_key) == "ik") {
-		return "-j";
-	}
-	if ((u_key + p_key) == "ji") {
-		return "-k";
-	}
-
-	if ((u_key + p_key) == "jj") {
-		return "-1";
-	}
-
-	if ((u_key + p_key) == "jk") {
-		return "i";
-	}
-
-	if ((u_key + p_key) == "ki") {
-		return "j";
-	}
-
-	if ((u_key + p_key) == "kj") {
-		return "-i";
-	}
-
-	if ((u_key + p_key) == "kk") {
-		return "-1";
-	}
-	if (u_key == "w") {
-		return p_key;
-	}
-	if (p_key == "w") {
-		return u_key;
-	}
-	return u_key + p_key;
-};
-static Quaternion calc(const Quaternion& unit_q, const Quaternion& pure_q) {
-	//calculate conjugate of unit quaternion
-	std::map<std::string, float> unit_q_conjugate;
-	for (auto& [key, value] : unit_q) {
-		if (key != "w")
-			unit_q_conjugate[key] = (float)-1 * value;
-		else
-			unit_q_conjugate[key] = value;
-	}
-	//std::cout << "Conjugate of unit quaternion :- " << "\n";
-	for (auto& [key, value] : unit_q_conjugate) {
-		std::cout << value << key << "\n";
-	}
-
-	//multiply unit quaternion to pure quaternion
-	std::multimap<std::string, float> res;
-	for (auto& [u_key, u_value] : unit_q) {
-		for (auto& [p_key, p_value] : pure_q) {
-			if (p_value != 0 && u_value != 0) {
-				if ((u_value * p_value) != 0) {
-					if (q_mult(u_key, p_key) == "-1") {
-						res.insert({ "w", -(u_value * p_value) });
-					}
-					else {
-						if (q_mult(u_key, p_key).contains("-")) {
-
-							res.insert({ q_mult(u_key, p_key)
-								.replace(0,1,""), -(u_value * p_value) });
-						}
-						else {
-							res.insert({ q_mult(u_key, p_key) , u_value * p_value });
-						}
-					}
-
-				}
-
-			}
-
-		}
-	}
-	auto [begin_w, end_w] = res.equal_range("w");
-	auto w = std::ranges::subrange(begin_w, end_w);
-	auto [begin_i, end_i] = res.equal_range("i");
-	auto i = std::ranges::subrange(begin_i, end_i);
-	auto [begin_j, end_j] = res.equal_range("j");
-	auto j = std::ranges::subrange(begin_j, end_j);
-	auto [begin_k, end_k] = res.equal_range("k");
-	auto k = std::ranges::subrange(begin_k, end_k);
-	float sum_w = 0;
-	float sum_i = 0;
-	float sum_j = 0;
-	float sum_k = 0;
-	for (auto& [_, value] : w) {
-		sum_w += value;
-	}
-	for (auto& [_, value] : i) {
-		sum_i += value;
-	}
-	for (auto& [_, value] : j) {
-		sum_j += value;
-	}
-	for (auto& [_, value] : k) {
-		sum_k += value;
-	}
-	std::map<std::string, float> qv{ {"w", sum_w},{"i", sum_i},{"j", sum_j},{"k", sum_k} };
-	//std::cout << "Multiplication between q and v :- " << "\n";
-	//std::cout << "(" << sum_w << "," << sum_i << "," << sum_j << "," << sum_k << ")" << "\n";
-	//std::cout << "--------------------" << "\n";
-	//for (auto& [key, value] : qv) {
-	//	std::cout << value << key << "\n";
-	//}
-
-	//multiply qv to q(conjugate)
-	std::multimap<std::string, float> qvq;
-	for (auto& [u_key, u_value] : qv) {
-		for (auto& [p_key, p_value] : unit_q_conjugate) {
-			if (p_value != 0 && u_value != 0) {
-				if ((u_value * p_value) != 0) {
-					if (q_mult(u_key, p_key) == "-1") {
-						qvq.insert({ "w", -(u_value * p_value) });
-					}
-					else {
-						if (q_mult(u_key, p_key).contains("-")) {
-
-							qvq.insert({ q_mult(u_key, p_key)
-								.replace(0,1,""), -(u_value * p_value) });
-						}
-						else {
-							qvq.insert({ q_mult(u_key, p_key) , u_value * p_value });
-						}
-					}
-
-				}
-
-			}
-
-		}
-	}
-	/*for (auto& [key, value] : qvq) {
-		std::cout << value << key;
-	}*/
-	auto [b_w, e_w] = qvq.equal_range("w");
-	auto w_ = std::ranges::subrange(b_w, e_w);
-	auto [b_i, e_i] = qvq.equal_range("i");
-	auto i_ = std::ranges::subrange(b_i, e_i);
-	auto [b_j, e_j] = qvq.equal_range("j");
-	auto j_ = std::ranges::subrange(b_j, e_j);
-	auto [b_k, e_k] = qvq.equal_range("k");
-	auto k_ = std::ranges::subrange(b_k, e_k);
-	float s_w = 0;
-	float s_i = 0;
-	float s_j = 0;
-	float s_k = 0;
-	for (auto& [_, value] : w_) {
-		s_w += value;
-	}
-	for (auto& [_, value] : i_) {
-		s_i += value;
-	}
-	for (auto& [_, value] : j_) {
-		s_j += value;
-	}
-	for (auto& [_, value] : k_) {
-		s_k += value;
-	}
-	//std::cout << "Multiplication between qv and q(conjugate) :- " << "\n";
-	std::cout << "(" << s_w << "," << s_i << "," << s_j << "," << s_k << ")" << "\n";
-	return { s_w, s_i, s_j, s_k };
-}
+#include <catch2/catch_approx.hpp> // Required header for Approx
+#include <random>
+#include "quaternion.hpp"
 
 
 TEST_CASE("Identity Rotation", "[quaternion]") {
@@ -251,7 +22,7 @@ TEST_CASE("90 degree about Z axis", "[quaternion]") {
 }
 
 TEST_CASE("90 degree about Y axis", "[quaternion]") {
-	REQUIRE(calc(Quaternion{ 0.70710678, 0, 0.70710678, 0 },Quaternion{ 0, 1, 0, 0 }) == Quaternion{ 0,0,0,-1 });
+	REQUIRE(calc(Quaternion{ 0.70710678, 0, 0.70710678, 0 }, Quaternion{ 0, 1, 0, 0 }) == Quaternion{ 0,0,0,-1 });
 }
 
 TEST_CASE("90 degree about X axis", "[quaternion]") {
@@ -279,7 +50,7 @@ TEST_CASE("120 degree rotation about (1,1,1)", "[quaternion]") {
 	REQUIRE(calc(
 		Quaternion{ 0.5, 0.5, 0.5, 0.5 },
 		Quaternion{ 0, 1, 0, 0 }
-	)==Quaternion{0,0,1,0});
+	) == Quaternion{ 0,0,1,0 });
 }
 
 TEST_CASE("Rotation preserves vector magnitude", "[quaternion]") {
@@ -306,7 +77,7 @@ TEST_CASE("Rotation followed by inverse recovers original vector", "[quaternion]
 	Quaternion v1 = calc(q, v);
 	Quaternion v2 = calc(q_conj, v1);
 
-	REQUIRE(v2== v);
+	REQUIRE(v2 == v);
 }
 TEST_CASE("Very small angle rotation", "[quaternion]") {
 	float theta = 0.0001;
@@ -332,7 +103,7 @@ TEST_CASE("Non-unit quaternion is rejected or normalized", "[quaternion]") {
 
 	REQUIRE(result == Quaternion{ 0, 1, 2, 3 });
 }
-#include <random>
+
 
 TEST_CASE("Randomized quaternion rotation invariants", "[quaternion][random]") {
 	std::mt19937 gen(42);
@@ -360,9 +131,9 @@ TEST_CASE("Randomized quaternion rotation invariants", "[quaternion][random]") {
 		float norm_v = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 		float norm_v_rot = std::sqrt(v_rot.x * v_rot.x + v_rot.y * v_rot.y + v_rot.z * v_rot.z);
 		REQUIRE(norm_v_rot == Catch::Approx(norm_v).epsilon(1e-6));
-
+		//REQUIRE(epsilonComp(norm_v_rot, norm_v, 1e-6));
 		// Forward + inverse returns original
-		REQUIRE(v_back == v );
+		REQUIRE(v_back == v);
 
 		// Zero vector stays zero
 		Quaternion zero{ 0,0,0,0 };
@@ -418,7 +189,7 @@ TEST_CASE("Quaternion rotation matches rotation matrix", "[quaternion][matrix]")
 	REQUIRE(epsilonComp(v_rot.x, v_mat[0], 1e-6));
 	REQUIRE(epsilonComp(v_rot.y, v_mat[1], 1e-6));
 	REQUIRE(epsilonComp(v_rot.z, v_mat[2], 1e-6));
-}	
+}
 TEST_CASE("Long-term rotation drift", "[quaternion][drift]") {
 	const int steps = 10000;
 	const float theta = 0.01; // 0.01 rad ~ 0.57°
