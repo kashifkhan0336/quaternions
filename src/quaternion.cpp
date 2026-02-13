@@ -58,6 +58,17 @@ bool operator==(const Quaternion& lhs, const Quaternion& rhs)
 		return false;
 	}
 }
+std::unordered_map<std::string, std::string> lookup_table{
+	{"ii","-1"},
+	{"ij","k"},
+	{"ik","-j"},
+	{"ji", "-k"},
+	{"jj", "-1"},
+	{"jk", "i"},
+	{"ki", "j"},
+	{"kj", "-i"},
+	{"kk", "-1"},
+};
 std::string q_mult(std::string u_key, std::string p_key) {
 	if ((u_key + p_key) == "ii") {
 		return "-1";
@@ -103,25 +114,21 @@ std::string q_mult(std::string u_key, std::string p_key) {
 };
 Quaternion calc(const Quaternion& unit_q, const Quaternion& pure_q) {
 	//calculate conjugate of unit quaternion
-	std::map<std::string, float> unit_q_conjugate;
+	std::unordered_map<std::string, float> unit_q_conjugate;
 	for (auto& [key, value] : unit_q) {
 		if (key != "w")
 			unit_q_conjugate[key] = (float)-1 * value;
 		else
 			unit_q_conjugate[key] = value;
 	}
-	//std::cout << "Conjugate of unit quaternion :- " << "\n";
-	for (auto& [key, value] : unit_q_conjugate) {
-		std::cout << value << key << "\n";
-	}
 
 	//multiply unit quaternion to pure quaternion
-	std::multimap<std::string, float> res;
+	std::unordered_multimap<std::string, float> res;
 	for (auto& [u_key, u_value] : unit_q) {
 		for (auto& [p_key, p_value] : pure_q) {
 			if (p_value != 0 && u_value != 0) {
 				if ((u_value * p_value) != 0) {
-					if (q_mult(u_key, p_key) == "-1") {
+					if (lookup_table_[u_key+p_key] == "-1") {
 						res.insert({ "w", -(u_value * p_value) });
 					}
 					else {
@@ -227,7 +234,7 @@ Quaternion calc(const Quaternion& unit_q, const Quaternion& pure_q) {
 		s_k += value;
 	}
 	//std::cout << "Multiplication between qv and q(conjugate) :- " << "\n";
-	std::cout << "(" << s_w << "," << s_i << "," << s_j << "," << s_k << ")" << "\n";
+	//std::cout << "(" << s_w << "," << s_i << "," << s_j << "," << s_k << ")" << "\n";
 	return { s_w, s_i, s_j, s_k };
 }
 

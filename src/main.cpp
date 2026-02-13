@@ -4,19 +4,33 @@
 #include <unordered_map>
 #include <random>
 #include <benchmark/benchmark.h>
-static void BM_StringCreation(benchmark::State& state) {
-    for (auto _ : state)
-        std::string empty_string;
-}
-// Register the function as a benchmark
-BENCHMARK(BM_StringCreation);
+#include "include/quaternion.hpp";
+std::unordered_map<std::string, std::string> lookup_table_{
+	{"ii","-1"}, 
+	{"ij","k"}, 
+	{"ik","-j"},
+	{"ji", "-k"}, 
+	{"jj", "-1"},
+	{"jk", "i"},
+	{"ki", "j"},
+	{"kj", "-i"},
+	{"kk", "-1"},
+};
 
-// Define another benchmark
-static void BM_StringCopy(benchmark::State& state) {
-    std::string x = "hello";
-    for (auto _ : state)
-        std::string copy(x);
+static void BM_QMULT_LOOKUP(benchmark::State& state) {
+	for (auto _ : state) {
+		lookup_table_["ii"];
+	}
 }
-BENCHMARK(BM_StringCopy);
+static void BM_ORIGINAL_CALC(benchmark::State& state) {
+	for (auto _ : state) {
+		calc(Quaternion{ 1, 0, 0,0 }, { 0,2,3,0 });
+	}
+}
+
+// Register the function as a benchmark
+
+BENCHMARK(BM_QMULT_LOOKUP);
+BENCHMARK(BM_ORIGINAL_CALC);
 
 BENCHMARK_MAIN();
